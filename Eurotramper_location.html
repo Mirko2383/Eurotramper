@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ESP32 GPS Tracker</title>
+  <meta charset="utf-8" />
+  <style>
+    #map { height: 100vh; width: 100%; }
+    .info-box {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      font-family: sans-serif;
+    }
+  </style>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- MQTT over WebSocket -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="info-box" id="info">Warte auf GPS-Daten...</div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map('map').setView([48.0, 11.0], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    let path = [];
+    let polyline = L.polyline([], { color: 'red' }).addTo(map);
+    let marker = L.marker([48.0, 11.0]).addTo(map);
+
+    // Info-Anzeige oben links
+    const infoBox = document.getElementById("info");
+
+    // MQTT Client mit HiveMQ verbinden
+    const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+    client.on('connect', () => {
+      console.log("MQTT verbunden");
+      client.subscribe("position_eurotramper");
+	 });
+	
+
+ client.on('message', (topic, message) => {
+  try {
+    const data = JSON.parse(message.toString());
+    const timestampUTC = data.timestamp;
+
+    const lat = data.lat;
+    const lng = data.lng;
+    const speed = data.speed;
+    const temp = data.temp;
+    const hum = data.hum;
+    const pos = [lat, lng];
+
+   let timestampLocal = timestampUTC;
+   
+try {
+  const dateObj = new Date(Date.parse(timestampUTC));
+  if (!isNaN(dateObj)) {
+    timestampLocal = dateObj.toLocaleString("de-DE", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+  } else {
+
+  }
+} catch (e) {
+  console.error("Zeitformatfehler:", e);
+}
+
+    path.push(pos);
+    polyline.setLatLngs(path);
+    marker.setLatLng(pos);
+    map.setView(pos);
+
+    const popupText = `
+      🕒 <b>Zeit:</b> ${timestampLocal}<br>
+	  📍 <b>Lat:</b> ${lat.toFixed(6)}<br>
+      📍 <b>Lng:</b> ${lng.toFixed(6)}<br>
+     	   <b>--------------------------------------<br>
+      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(2)} km/h<br>
+      🌡️ <b>Temperatur innen:</b> ${temp.toFixed(1)} °C<br>
+      💧 <b>Luftfeuchte innen:</b> ${hum.toFixed(1)} %rF
+    `;
+    marker.bindPopup(popupText).openPopup();
+
+    infoBox.innerHTML = `
+      🕒 <b>Zeit:</b> ${timestampLocal}<br>
+	  📍 <b>Position:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+      	   <b>--------------------------------------<br>
+      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(2)} km/h<br>
+      🌡️ <b>Temperatur innen:</b> ${temp.toFixed(1)} °C<br>
+      💧 <b>Luftfeuchte innen:</b> ${hum.toFixed(1)} %rF
+    `;
+  } catch (e) {
+    console.error("Ungültige Nachricht:", message.toString());
+    console.error("Fehler:", e);
+  }
+});
+  </script>
+</body>
+</html>
