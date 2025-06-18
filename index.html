@@ -1,23 +1,9 @@
+<html>
 <head>
   <title>ESP32 GPS Tracker</title>
   <meta charset="utf-8" />
-
-  <!-- ✅ Leaflet CSS einfügen -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <!-- Dein Style -->
   <style>
-    html, body { 
-      height: 100%;
-      margin: 0;
-      padding: 0;
-    }
-
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-
+    #map { height: 100vh; width: 100%; }
     .info-box {
       position: absolute;
       top: 10px;
@@ -27,16 +13,14 @@
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       font-family: sans-serif;
-      z-index: 1000;
     }
   </style>
 
-  <!-- MQTT -->
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- MQTT over WebSocket -->
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 </head>
-
-
-
 <body>
   <div id="map"></div>
   <div class="info-box" id="info">Warte auf GPS-Daten...</div>
@@ -77,6 +61,8 @@
     const temp = data.temp;
     const hum = data.hum;
     const pos = [lat, lng];
+    const richtung = data.richtung;
+    const altitude = data.altitude;
 
    let timestampLocal = timestampUTC;
    
@@ -104,24 +90,34 @@ try {
     map.setView(pos);
 
     const popupText = `
-      🕒 <b>Zeit:</b> ${timestampLocal}<br>
+     
 	  📍 <b>Lat:</b> ${lat.toFixed(6)}<br>
       📍 <b>Lng:</b> ${lng.toFixed(6)}<br>
      	   <b>--------------------------------------<br>
-      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(2)} km/h<br>
-      🌡️ <b>Temperatur innen:</b> ${temp.toFixed(1)} °C<br>
-      💧 <b>Luftfeuchte innen:</b> ${hum.toFixed(1)} %rF
+      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(0)} km/h<br>
+      🧭 <b>Richtung:</b> ${richtung}<br>
+      🏔️ <b>Höhe:</b> ${altitude} m ü. Null<br>
+      	   <b>--------------------------------------<br>
+      🌡️ <b>Temperatur:</b> ${temp.toFixed(1)} °C<br>
+      💧 <b>Luftfeuchte:</b> ${hum.toFixed(1)} %rF
+      
     `;
+    
     marker.bindPopup(popupText).openPopup();
 
     infoBox.innerHTML = `
-      🕒 <b>Zeit:</b> ${timestampLocal}<br>
-	  📍 <b>Position:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+	  📍 <b>Lat:</b> ${lat.toFixed(6)}<br>
+      📍 <b>Lng:</b> ${lng.toFixed(6)}<br>
+     	   <b>--------------------------------------<br>
+      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(0)} km/h<br>
+      🧭 <b>Richtung:</b> ${richtung}<br>
+      🏔️ <b>Höhe:</b> ${altitude} m ü. Null<br>
       	   <b>--------------------------------------<br>
-      🚴 <b>Geschwindigkeit:</b> ${speed.toFixed(2)} km/h<br>
-      🌡️ <b>Temperatur innen:</b> ${temp.toFixed(1)} °C<br>
-      💧 <b>Luftfeuchte innen:</b> ${hum.toFixed(1)} %rF
-    `;
+      🌡️ <b>Temperatur:</b> ${temp.toFixed(1)} °C<br>
+      💧 <b>Luftfeuchte:</b> ${hum.toFixed(1)} %rF
+
+      `;
+    
   } catch (e) {
     console.error("Ungültige Nachricht:", message.toString());
     console.error("Fehler:", e);
